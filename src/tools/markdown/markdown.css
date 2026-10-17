@@ -10,7 +10,7 @@
   --prose-fg: #141413;
   --prose-muted: #5e5d59;
   --prose-faint: #8f8d86;
-  --prose-line: rgba(20, 20, 19, 0.12);
+  --prose-line: rgba(20, 20, 19, 0.14);
   --prose-clay: #c6613f;
   --prose-clay-soft: rgba(217, 119, 87, 0.16);
   --prose-code-bg: #f0eee6;
@@ -347,55 +347,6 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   margin: 0 auto;
   padding: 56px var(--doc-pad) 30vh;
 }
-.md-doc .md-source {
-  display: none;
-}
-.md-doc.is-source .md-editor,
-.md-doc.is-source .md-hint {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 20px;
-  padding: 6px 6px 6px 12px;
-  border-radius: 8px;
-  background: var(--block-bg);
-  color: var(--fg-muted);
-  font-size: 13.5px;
-}
-.hint-icon {
-  display: inline-flex;
-}
-.hint-text {
-  flex: 1;
-}
-.hint-close {
-  height: 24px;
-  min-width: 24px;
-}
-
-.md-props {
-  display: none;
-}
-.md-doc.is-source .md-source {
-  display: block;
-}
-.md-source {
-  width: 100%;
-  min-height: 60vh;
-  padding: 0;
-  border: 0;
-  outline: none;
-  resize: none;
-  overflow: hidden;
-  background: transparent;
-  color: var(--fg);
-  font-family: var(--mono);
-  font-size: 13.5px;
-  line-height: 1.7;
-  tab-size: 2;
-  border-radius: 6px;
-}
-
 .md-hint {
   display: flex;
   align-items: center;
@@ -686,6 +637,7 @@ body[data-tool='markdown'] .crumb-sep:last-child,
 /* Tables */
 .prose .tableWrapper {
   margin: 1.1em 0 1.3em;
+  padding: 1px; /* keep the outer collapsed border inside the scroll clip */
   overflow-x: auto;
 }
 .prose table {
@@ -698,17 +650,16 @@ body[data-tool='markdown'] .crumb-sep:last-child,
 }
 .prose th,
 .prose td {
-  border: 0;
-  border-bottom: 1px solid var(--prose-line);
-  padding: 8px 14px 8px 0;
+  border: 1px solid var(--prose-line);
+  padding: 8px 12px;
   vertical-align: top;
   text-align: left;
   min-width: 80px;
   position: relative;
 }
 .prose th {
-  border-bottom-color: var(--prose-fg);
-  font-weight: 600;
+  background: var(--prose-code-bg);
+  font-weight: 700;
 }
 .prose th p,
 .prose td p {

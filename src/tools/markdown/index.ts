@@ -7,8 +7,6 @@ import { frontmatterPairs, joinFrontmatter, splitFrontmatter } from './frontmatt
 import { FileWatcher, type WatchEvent } from './watcher'
 import * as fs from './files'
 
-type Mode = 'rich' | 'source'
-
 type Session =
   | {
       kind: 'handle'
@@ -66,7 +64,6 @@ export function mount(ctx: ToolContext): ToolInstance {
   // ---------- State ----------
   let session: Session | null = null
   let watcher: FileWatcher | null = null
-  let mode: Mode = pref.get('mode', 'rich') === 'source' ? 'source' : 'rich'
   let frontmatter: string | null = null
   let diskText = '' // last text we know is on disk (loaded or saved)
   let baseline = '' // diskText as the current view would serialize it
@@ -95,14 +92,7 @@ export function mount(ctx: ToolContext): ToolInstance {
   const hint = h('div', { class: 'md-hint', hidden: true })
   const props = h('div', { class: 'md-props', hidden: true })
   const editorMount = h('div', { class: 'md-editor' })
-  const source = h('textarea', {
-    class: 'md-source',
-    spellcheck: 'false',
-    'aria-label': 'Markdown source',
-    autocapitalize: 'off',
-    autocomplete: 'off',
-  })
-  const doc = h('article', { class: 'md-doc', hidden: true }, hint, props, editorMount, source)
+  const doc = h('article', { class: 'md-doc', hidden: true }, hint, props, editorMount)
   const main = h('section', { class: 'md-main' }, banner, empty, doc)
   const dropHint = h('div', { class: 'md-drop' }, h('div', {}, 'Drop to open'))
   const root = h('div', { class: 'md-tool' }, main, dropHint, fileInput)
@@ -113,13 +103,6 @@ export function mount(ctx: ToolContext): ToolInstance {
   const status = h('span', { class: 'md-status' })
   ctx.crumbs.append(h('span', { class: 'crumb-sep' }, '/'), crumbName, status)
 
-  const sourceBtn = h('button', {
-    class: 'icon-btn',
-    html: icon('code'),
-    title: `Markdown source (${kbd('mod+/')})`,
-    'aria-label': 'Toggle markdown source',
-    'aria-pressed': 'false',
-  })
   const openBtn = h('button', { class: 'text-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, 'Open')
   const moreBtn = h('button', {
     class: 'icon-btn',
@@ -129,7 +112,7 @@ export function mount(ctx: ToolContext): ToolInstance {
     'aria-haspopup': 'menu',
     'aria-expanded': 'false',
   })
-  ctx.actions.append(sourceBtn, openBtn, moreBtn)
+  ctx.actions.append(openBtn, moreBtn)
 
   // ---------- Editor ----------
   const ed = createEditor(editorMount, {
@@ -142,10 +125,9 @@ export function mount(ctx: ToolContext): ToolInstance {
   const mgr = () => ed.editor.markdown!
   const normalize = (body: string) => tidy(mgr().serialize(mgr().parse(body)))
   function currentText(): string {
-    return mode === 'source' ? source.value : joinFrontmatter(frontmatter, ed.getMarkdown())
+    return joinFrontmatter(frontmatter, ed.getMarkdown())
   }
   function baselineFor(text: string): string {
-    if (mode === 'source') return text
     const s = splitFrontmatter(text)
     return joinFrontmatter(s.frontmatter, normalize(s.body))
   }
@@ -154,16 +136,7 @@ export function mount(ctx: ToolContext): ToolInstance {
   function render(text: string, opts: { external?: boolean } = {}) {
     const s = splitFrontmatter(text)
     frontmatter = s.frontmatter
-    if (mode === 'source') {
-      const { selectionStart, selectionEnd } = source
-      const sTop = document.scrollingElement!.scrollTop
-      source.value = text
-      source.setSelectionRange(Math.min(selectionStart, text.length), Math.min(selectionEnd, text.length))
-      autosize()
-      document.scrollingElement!.scrollTop = sTop
-    } else {
-      ed.setMarkdown(s.body, opts)
-    }
+    ed.setMarkdown(s.body, opts)
     renderProps()
   }
 
@@ -178,31 +151,15 @@ export function mount(ctx: ToolContext): ToolInstance {
 
   function renderProps() {
     props.innerHTML = ''
-    const pairs = frontmatter && mode === 'rich' ? frontmatterPairs(frontmatter) : []
+    const pairs = frontmatter ? frontmatterPairs(frontmatter) : []
     props.hidden = !pairs.length
     for (const [k, v] of pairs.slice(0, 24)) {
       props.append(
         h('div', { class: 'prop' }, h('span', { class: 'prop-key' }, k), h('span', { class: 'prop-val' }, v || '—')),
       )
     }
-    props.title = 'Front matter. Edit it in the source view.'
+    props.title = 'Front matter'
   }
-
-  function autosize() {
-    source.style.height = 'auto'
-    source.style.height = `${source.scrollHeight + 2}px`
-  }
-  source.addEventListener('input', () => {
-    autosize()
-    onLocalEdit()
-  })
-  source.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey) {
-      e.preventDefault()
-      source.setRangeText('  ', source.selectionStart, source.selectionEnd, 'end')
-      source.dispatchEvent(new Event('input'))
-    }
-  })
 
   // ---------- Editing & saving ----------
   function onLocalEdit() {
@@ -384,8 +341,7 @@ export function mount(ctx: ToolContext): ToolInstance {
     showDoc()
     loadText(text)
     refreshUI()
-    if (mode === 'rich') ed.editor.commands.focus('start')
-    else source.focus()
+    ed.editor.commands.focus('start')
   }
 
   async function openFileFlow() {
@@ -428,7 +384,6 @@ export function mount(ctx: ToolContext): ToolInstance {
     conflictText = null
     dirty = false
     frontmatter = null
-    source.value = ''
     ed.setMarkdown('')
     diskText = baseline = ''
     refreshUI()
@@ -445,7 +400,6 @@ export function mount(ctx: ToolContext): ToolInstance {
           return
         }
         loadText(e.text, { external: true })
-        if (mode === 'source') flash(source)
         break
       }
       case 'missing':
@@ -462,12 +416,6 @@ export function mount(ctx: ToolContext): ToolInstance {
         refreshUI()
         break
     }
-  }
-
-  function flash(el: HTMLElement) {
-    el.classList.remove('md-flash')
-    void el.offsetWidth
-    el.classList.add('md-flash')
   }
 
   // ---------- Relative images & links (folder access, behind the scenes) ----------
@@ -641,9 +589,6 @@ export function mount(ctx: ToolContext): ToolInstance {
     if (!hasDoc) renderEmpty()
 
     root.classList.toggle('is-full', fullWidth)
-    doc.classList.toggle('is-source', mode === 'source')
-    sourceBtn.setAttribute('aria-pressed', String(mode === 'source'))
-    sourceBtn.hidden = !hasDoc
 
     crumbName.textContent = session ? session.name : ''
     crumbName.title = session?.name ?? ''
@@ -729,25 +674,6 @@ export function mount(ctx: ToolContext): ToolInstance {
     refreshUI()
   }
 
-  // ---------- Mode ----------
-  function setMode(next: Mode) {
-    if (next === mode || !session) return
-    const wasDirty = dirty && currentText() !== baseline
-    const text = wasDirty ? currentText() : diskText
-    mode = next
-    pref.set('mode', mode)
-    doc.classList.toggle('is-source', mode === 'source')
-    render(text)
-    baseline = baselineFor(diskText)
-    dirty = currentText() !== baseline
-    refreshUI()
-    if (mode === 'source') {
-      autosize()
-      source.focus({ preventScroll: true })
-    } else ed.editor.commands.focus(undefined, { scrollIntoView: false })
-  }
-  sourceBtn.addEventListener('click', () => setMode(mode === 'rich' ? 'source' : 'rich'))
-
   // ---------- Menus ----------
   openBtn.addEventListener('click', async () => {
     if (openBtn.getAttribute('aria-expanded') === 'true') return toggleMenu(openBtn, () => [])
@@ -805,14 +731,6 @@ export function mount(ctx: ToolContext): ToolInstance {
         },
         'separator',
         {
-          label: 'Markdown source',
-          icon: icon('code'),
-          hint: kbd('mod+/'),
-          checked: mode === 'source',
-          disabled: !session,
-          onSelect: () => setMode(mode === 'rich' ? 'source' : 'rich'),
-        },
-        {
           label: 'Autosave',
           checked: autosave,
           onSelect: () => {
@@ -846,9 +764,6 @@ export function mount(ctx: ToolContext): ToolInstance {
     } else if (k === 'o' && !e.shiftKey) {
       e.preventDefault()
       openFileFlow()
-    } else if (k === '/' && session) {
-      e.preventDefault()
-      setMode(mode === 'rich' ? 'source' : 'rich')
     }
   }
   document.addEventListener('keydown', onKey)
@@ -908,7 +823,6 @@ export function mount(ctx: ToolContext): ToolInstance {
       openHandle: (handle: FileSystemFileHandle, root?: fs.AssetRoot) => openHandle(handle, { root }),
       state: () => ({
         dirty,
-        mode,
         diskText,
         text: currentText(),
         conflict: conflictText != null,
