@@ -5,8 +5,8 @@
   min-width: 0;
   --doc-max: 720px;
   --doc-pad: clamp(20px, 7vw, 96px);
-  /* Document typography, after Anthropic's reading style. UI tokens stay untouched. */
-  --prose-serif: 'Source Serif 4', 'Tiempos Text', Charter, 'Iowan Old Style', Georgia, Cambria, serif;
+  /* Document typography, after Anthropic's reading style (sans). UI tokens stay untouched. */
+  --prose-sans: 'Atkinson Hyperlegible', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   --prose-fg: #141413;
   --prose-muted: #5e5d59;
   --prose-faint: #8f8d86;
@@ -445,14 +445,14 @@ body[data-tool='markdown'] .crumb-sep:last-child,
 /* ---------- Prose ---------- */
 .prose {
   outline: none;
-  font-family: var(--prose-serif);
-  font-size: 17.5px;
+  font-family: var(--prose-sans);
+  font-size: 16.5px;
   line-height: 1.7;
   color: var(--prose-fg);
   caret-color: var(--prose-clay);
   overflow-wrap: break-word;
   word-break: break-word;
-  font-feature-settings: 'kern', 'liga', 'onum';
+  font-feature-settings: 'kern', 'liga';
 }
 .prose ::selection {
   background: var(--prose-clay-soft);
@@ -470,14 +470,13 @@ body[data-tool='markdown'] .crumb-sep:last-child,
 .prose h4,
 .prose h5,
 .prose h6 {
-  font-family: var(--prose-serif);
-  font-weight: 500;
+  font-family: var(--prose-sans);
+  font-weight: 700;
   line-height: 1.25;
   margin: 1.7em 0 0.55em;
   padding: 0 2px;
   letter-spacing: -0.012em;
   color: var(--prose-fg);
-  font-feature-settings: 'kern', 'liga', 'lnum';
 }
 .prose > h1:first-child,
 .prose > h2:first-child,
@@ -486,7 +485,7 @@ body[data-tool='markdown'] .crumb-sep:last-child,
 }
 .prose > h1:first-child {
   font-size: 2.4em;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: -0.022em;
   line-height: 1.12;
   margin-bottom: 0.6em;
@@ -499,17 +498,17 @@ body[data-tool='markdown'] .crumb-sep:last-child,
 }
 .prose h3 {
   font-size: 1.22em;
-  font-weight: 600;
+  font-weight: 700;
 }
 .prose h4 {
   font-size: 1.05em;
-  font-weight: 600;
+  font-weight: 700;
 }
 .prose h5,
 .prose h6 {
-  font-family: var(--font);
+  font-family: var(--prose-sans);
   font-size: 0.8em;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--prose-muted);
@@ -530,7 +529,7 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   cursor: pointer;
 }
 .prose strong {
-  font-weight: 650;
+  font-weight: 700;
 }
 .prose code {
   font-family: var(--mono);
@@ -693,7 +692,7 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   border-collapse: collapse;
   table-layout: auto;
   min-width: 50%;
-  font-family: var(--font);
+  font-family: var(--prose-sans);
   font-size: 14.5px;
   line-height: 1.5;
 }
