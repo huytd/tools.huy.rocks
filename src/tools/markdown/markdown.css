@@ -18,6 +18,7 @@
   --prose-mark: rgba(255, 205, 41, 0.38);
   --note-w: 220px;
   --note-gap: 36px;
+  --outline-w: 220px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .md-tool {
@@ -398,6 +399,82 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   overflow-wrap: anywhere;
 }
 
+/* ---------- Outline ---------- */
+.md-outline {
+  display: none;
+  position: fixed;
+  z-index: 5;
+  top: calc(var(--topbar-h) + 48px);
+  /* Sit just left of the text column, or at the edge when the page is full width */
+  left: max(20px, calc(50vw - var(--doc-max) / 2 - var(--outline-w) - 56px));
+  width: var(--outline-w);
+  max-height: calc(100vh - var(--topbar-h) - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  font-size: 13px;
+}
+@media (min-width: 1240px) {
+  .md-tool.has-outline .md-outline {
+    display: block;
+  }
+  .md-tool.is-full.has-outline .md-doc {
+    padding-left: calc(var(--doc-pad) + var(--outline-w) + 24px);
+  }
+}
+.md-tool.is-peek .md-outline {
+  display: block;
+  z-index: 30;
+  top: calc(var(--topbar-h) + 6px);
+  left: 12px;
+  width: min(300px, calc(100vw - 24px));
+  max-height: calc(100vh - var(--topbar-h) - 24px);
+  padding: 10px 8px 10px 4px;
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.outline-head {
+  padding: 0 0 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-faint);
+}
+.outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--line);
+}
+.outline-item {
+  display: block;
+  margin-left: -1px;
+  padding: 3px 8px 3px calc(11px + var(--depth, 0) * 12px);
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--fg-muted);
+  line-height: 1.45;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.12s, border-color 0.12s;
+}
+.outline-item:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+.outline-item.is-active {
+  border-left-color: var(--prose-clay);
+  color: var(--fg);
+  font-weight: 500;
+}
+.outline-empty {
+  padding: 3px 8px 3px 12px;
+  color: var(--fg-faint);
+  line-height: 1.45;
+}
+
 /* ---------- Prose ---------- */
 .prose {
   outline: none;
@@ -433,6 +510,9 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   padding: 0 2px;
   letter-spacing: -0.012em;
   color: var(--prose-fg);
+}
+.prose :is(h1, h2, h3, h4, h5, h6) {
+  scroll-margin-top: calc(var(--topbar-h) + 24px);
 }
 .prose > h1:first-child,
 .prose > h2:first-child,

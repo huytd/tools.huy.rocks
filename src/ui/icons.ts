@@ -43,6 +43,7 @@ const paths = {
   highlight: '<path d="m14.5 4.5 5 5-7.5 7.5h-5v-5z"/><path d="M7 12l5 5M4 20h7"/>',
   note: '<path d="M5 4.5h14a1 1 0 0 1 1 1V15l-5 5H5a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1z"/><path d="M20 15h-4a1 1 0 0 0-1 1v4M8 9h8M8 12.5h5"/>',
   diagram: '<rect x="3.5" y="4" width="6" height="5" rx="1.2"/><rect x="14.5" y="4" width="6" height="5" rx="1.2"/><rect x="9" y="15" width="6" height="5" rx="1.2"/><path d="M6.5 9v2.5h11V9M12 11.5V15"/>',
+  outline: '<path d="M4 6h16M8.5 12h11.5M8.5 18h11.5"/><path d="M4.5 12h.01M4.5 18h.01" stroke-width="2.4"/>',
   arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
 } as const
 

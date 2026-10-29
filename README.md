@@ -14,6 +14,7 @@ A Notion-style viewer and editor for `.md` files.
 - **Highlights.** Select text and pick the highlighter in the toolbar (or `⌘⇧H`). Stored as `==text==`.
 - **Mermaid diagrams.** A ```` ```mermaid ```` code block renders as a diagram (`/diagram` inserts one). Click the diagram to edit its source; it re-renders as you type and follows the light/dark theme.
 - **Side notes.** Select text and click the note button in the toolbar, press `⌘⌥M`, or type `/side note`. Notes sit in the right margin next to their numbered reference (on narrow screens, click the number to show one). Click a note to edit it, `Enter` to save, and the `×` to remove it. They're saved as standard markdown footnotes (`[^1]` plus `[^1]: note` at the end of the file), so existing footnotes show up as side notes too.
+- **Contents.** The list button in the top bar (or `⌘⌥O`) shows the page's headings in the left margin, marks the section you're reading, and jumps to a heading on click. On narrow screens it opens as a floating panel instead.
 - **Autosave** writes back to the same file shortly after you stop typing (toggle it in the `⋯` menu). If the file changes on disk while you have unsaved edits, you get a choice instead of a silent overwrite.
 - **Source view** (`⌘/`) shows the raw markdown, exactly as it is on disk.
 - **Front matter** is kept verbatim and shown as a small property list.
@@ -47,6 +48,7 @@ src/
     slash.ts              "/" block menu
     mermaid.ts            code block node view that renders mermaid diagrams
     sidenote.ts           side notes, stored as markdown footnotes
+    outline.ts            contents panel built from the headings
     watcher.ts            background file polling
     files.ts              File System Access helpers, recents, folder grants
     frontmatter.ts        YAML front matter passthrough

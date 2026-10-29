@@ -3,6 +3,7 @@ import type { ToolContext, ToolInstance } from '../registry'
 import { h, kbd, relativeTime, showMenu, toast, toggleMenu, type MenuEntry } from '../../ui/dom'
 import { icon } from '../../ui/icons'
 import { createEditor } from './editor'
+import { createOutline } from './outline'
 import { frontmatterPairs, joinFrontmatter, splitFrontmatter } from './frontmatter'
 import { FileWatcher, type WatchEvent } from './watcher'
 import * as fs from './files'
@@ -88,6 +89,9 @@ export function mount(ctx: ToolContext): ToolInstance {
   let assetsDismissed = false
   let autosave = pref.get('autosave', '1') === '1'
   let fullWidth = pref.get('fullWidth', '0') === '1'
+  let showOutline = pref.get('outline', '0') === '1' // docked in the margin on wide screens
+  let outlinePeek = false // floating over the page on narrow screens
+  const wide = matchMedia('(min-width: 1240px)')
   let changeTimer: number | undefined
   let disposed = false
   const imageCache = new Map<string, string>()
@@ -123,7 +127,15 @@ export function mount(ctx: ToolContext): ToolInstance {
     'aria-haspopup': 'menu',
     'aria-expanded': 'false',
   })
-  ctx.actions.append(openBtn, moreBtn)
+  const outlineTitle = `Contents (${kbd('mod+alt+o')})`
+  const outlineBtn = h('button', {
+    class: 'icon-btn',
+    html: icon('outline'),
+    'aria-label': outlineTitle,
+    title: outlineTitle,
+    'aria-pressed': 'false',
+  })
+  ctx.actions.append(outlineBtn, openBtn, moreBtn)
 
   // ---------- Editor ----------
   const ed = createEditor(editorMount, {
@@ -131,6 +143,13 @@ export function mount(ctx: ToolContext): ToolInstance {
     resolveImage,
     openLink,
   })
+
+  const outline = createOutline(ed.editor, {
+    onNavigate: () => {
+      if (outlinePeek) toggleOutline()
+    },
+  })
+  root.append(outline.el)
 
   // ---------- Text model ----------
   const normalize = (body: string) => ed.normalize(body)
@@ -599,6 +618,10 @@ export function mount(ctx: ToolContext): ToolInstance {
     if (!hasDoc) renderEmpty()
 
     root.classList.toggle('is-full', fullWidth)
+    root.classList.toggle('has-outline', hasDoc && showOutline)
+    root.classList.toggle('is-peek', hasDoc && outlinePeek)
+    outlineBtn.hidden = !hasDoc
+    outlineBtn.setAttribute('aria-pressed', String(wide.matches ? showOutline : outlinePeek))
 
     crumbName.textContent = session ? session.name : ''
     crumbName.title = session?.name ?? ''
@@ -751,6 +774,14 @@ export function mount(ctx: ToolContext): ToolInstance {
           },
         },
         { label: 'Full width', icon: icon('width'), checked: fullWidth, onSelect: () => toggleWidth() },
+        {
+          label: 'Contents',
+          icon: icon('outline'),
+          hint: kbd('mod+alt+o'),
+          checked: wide.matches ? showOutline : outlinePeek,
+          disabled: !session,
+          onSelect: () => toggleOutline(),
+        },
         'separator',
         { label: 'Close file', disabled: !session, onSelect: async () => (await confirmLeave()) && closeFile() },
       ],
@@ -764,11 +795,40 @@ export function mount(ctx: ToolContext): ToolInstance {
     refreshUI()
   }
 
+  function toggleOutline() {
+    if (!session) return
+    if (wide.matches) {
+      showOutline = !showOutline
+      pref.set('outline', showOutline ? '1' : '0')
+      outlinePeek = false
+    } else outlinePeek = !outlinePeek
+    refreshUI()
+  }
+  outlineBtn.addEventListener('click', toggleOutline)
+  const onWideChange = () => {
+    outlinePeek = false
+    refreshUI()
+  }
+  wide.addEventListener('change', onWideChange)
+  // The floating outline closes like a menu.
+  const onPointerDown = (e: PointerEvent) => {
+    const t = e.target as Node
+    if (outlinePeek && !outline.el.contains(t) && !outlineBtn.contains(t)) toggleOutline()
+  }
+  document.addEventListener('pointerdown', onPointerDown, true)
+
   // ---------- Keyboard ----------
   const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && outlinePeek) {
+      toggleOutline()
+      return
+    }
     if (!(e.metaKey || e.ctrlKey)) return
     const k = e.key.toLowerCase()
-    if (k === 's') {
+    if (e.altKey && e.code === 'KeyO') {
+      e.preventDefault()
+      toggleOutline()
+    } else if (k === 's') {
       e.preventDefault()
       save({ saveAs: e.shiftKey, explicit: true })
     } else if (k === 'o' && !e.shiftKey) {
@@ -852,7 +912,10 @@ export function mount(ctx: ToolContext): ToolInstance {
       stopWatching()
       clearTimeout(changeTimer)
       clearImageCache()
+      outline.destroy()
       ed.destroy()
+      wide.removeEventListener('change', onWideChange)
+      document.removeEventListener('pointerdown', onPointerDown, true)
       document.removeEventListener('keydown', onKey)
       window.removeEventListener('dragenter', onDragEnter)
       window.removeEventListener('dragleave', onDragLeave)
