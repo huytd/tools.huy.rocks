@@ -1,18 +1,20 @@
-import { Editor, Extension } from '@tiptap/core'
+import { Editor, Extension, type JSONContent } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { TableKit } from '@tiptap/extension-table'
 import { Placeholder } from '@tiptap/extensions'
 import { BubbleMenu } from '@tiptap/extension-bubble-menu'
-import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
+import Highlight from '@tiptap/extension-highlight'
 import Image from '@tiptap/extension-image'
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { createLowlight, common } from 'lowlight'
 import { SlashCommand } from './slash'
-import { h, isMac } from '../../ui/dom'
+import { CodeBlock, MermaidEditing } from './mermaid'
+import { Sidenote, addSidenote, parseWithNotes, serializeWithNotes } from './sidenote'
+import { h, isMac, kbd } from '../../ui/dom'
 import { icon } from '../../ui/icons'
 
 export interface EditorHooks {
@@ -120,6 +122,7 @@ function buildBubble(getEditor: () => Editor) {
     { name: 'italic', icon: 'italic', title: `Italic (${isMac ? '⌘' : 'Ctrl+'}I)`, run: (e) => e.chain().focus().toggleItalic().run() },
     { name: 'strike', icon: 'strike', title: 'Strikethrough', run: (e) => e.chain().focus().toggleStrike().run() },
     { name: 'code', icon: 'inlineCode', title: `Inline code (${isMac ? '⌘' : 'Ctrl+'}E)`, run: (e) => e.chain().focus().toggleCode().run() },
+    { name: 'highlight', icon: 'highlight', title: `Highlight (${kbd('mod+shift+h')})`, run: (e) => e.chain().focus().toggleHighlight().run() },
   ]
   const buttons = marks.map((m) => {
     const b = h('button', { class: 'bubble-btn', title: m.title, 'aria-label': m.title, html: icon(m.icon, 15), type: 'button' })
@@ -133,7 +136,11 @@ function buildBubble(getEditor: () => Editor) {
   const linkBtn = h('button', { class: 'bubble-btn', title: 'Link', 'aria-label': 'Link', html: icon('link', 15), type: 'button' })
   linkBtn.addEventListener('mousedown', (ev) => ev.preventDefault())
   const linkInput = h('input', { class: 'bubble-input', type: 'url', placeholder: 'Paste link, Enter to apply', spellcheck: 'false' })
-  const tools = h('div', { class: 'bubble-tools' }, ...buttons.map((x) => x.b), h('span', { class: 'bubble-sep' }), linkBtn)
+  const noteTitle = `Add side note (${kbd('mod+alt+m')})`
+  const noteBtn = h('button', { class: 'bubble-btn', title: noteTitle, 'aria-label': noteTitle, html: icon('note', 15), type: 'button' })
+  noteBtn.addEventListener('mousedown', (ev) => ev.preventDefault())
+  noteBtn.addEventListener('click', () => addSidenote(getEditor()))
+  const tools = h('div', { class: 'bubble-tools' }, ...buttons.map((x) => x.b), h('span', { class: 'bubble-sep' }), linkBtn, noteBtn)
   el.append(tools, linkInput)
 
   linkBtn.addEventListener('click', () => {
@@ -180,7 +187,10 @@ export function createEditor(mount: HTMLElement, hooks: EditorHooks) {
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         link: { openOnClick: false, autolink: true, linkOnPaste: true, defaultProtocol: 'https' },
       }),
-      CodeBlockLowlight.configure({ lowlight, defaultLanguage: null, enableTabIndentation: true }),
+      CodeBlock.configure({ lowlight, defaultLanguage: null, enableTabIndentation: true }),
+      MermaidEditing,
+      Highlight,
+      Sidenote,
       TaskList,
       TaskItem.configure({ nested: true }),
       TableKit.configure({ table: { resizable: false } }),
@@ -228,6 +238,8 @@ export function createEditor(mount: HTMLElement, hooks: EditorHooks) {
   })
 
   let flashTimer: number | undefined
+  const parse = (md: string) => parseWithNotes(md, (body) => editor.markdown!.parse(body))
+  const serialize = (doc: JSONContent) => tidy(serializeWithNotes(doc, (d) => editor.markdown!.serialize(d)))
 
   /** Replace content from markdown without firing onChange. */
   function setMarkdown(md: string, opts: { external?: boolean } = {}) {
@@ -237,7 +249,7 @@ export function createEditor(mount: HTMLElement, hooks: EditorHooks) {
     const { from, to } = editor.state.selection
     const before = editor.state.doc
 
-    editor.commands.setContent(md, { contentType: 'markdown', emitUpdate: false })
+    editor.commands.setContent(parse(md), { emitUpdate: false })
 
     if (hadFocus) {
       const max = editor.state.doc.content.size
@@ -261,7 +273,9 @@ export function createEditor(mount: HTMLElement, hooks: EditorHooks) {
   return {
     editor,
     setMarkdown,
-    getMarkdown: () => tidy(editor.getMarkdown()),
+    getMarkdown: () => serialize(editor.getJSON()),
+    /** Markdown as this editor would write it back. */
+    normalize: (md: string) => serialize(parse(md)),
     destroy: () => {
       editor.destroy()
       bubble.el.remove()

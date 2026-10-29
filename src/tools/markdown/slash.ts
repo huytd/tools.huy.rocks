@@ -3,6 +3,8 @@ import Suggestion, { type SuggestionProps, type SuggestionKeyDownProps } from '@
 import { PluginKey } from '@tiptap/pm/state'
 import { h } from '../../ui/dom'
 import { icon, type IconName } from '../../ui/icons'
+import { MERMAID_SAMPLE } from './mermaid'
+import { addSidenote } from './sidenote'
 
 interface SlashItem {
   title: string
@@ -26,6 +28,8 @@ export const SLASH_ITEMS: SlashItem[] = [
   { title: 'Quote', hint: 'Capture a quote', icon: 'quote', keywords: 'blockquote citation', markdown: '>', run: (e, r) => chain(e, r).toggleBlockquote().run() },
   { title: 'Code', hint: 'Code block with highlighting', icon: 'codeBlock', keywords: 'code snippet pre fence', markdown: '```', run: (e, r) => chain(e, r).toggleCodeBlock().run() },
   { title: 'Divider', hint: 'Visually separate blocks', icon: 'divider', keywords: 'hr rule separator line', markdown: '---', run: (e, r) => chain(e, r).setHorizontalRule().run() },
+  { title: 'Diagram', hint: 'Mermaid flowchart, sequence, and more', icon: 'diagram', keywords: 'mermaid chart flowchart graph sequence', markdown: '```mermaid', run: (e, r) => chain(e, r).setCodeBlock({ language: 'mermaid' }).command(({ tr }) => (tr.insertText(MERMAID_SAMPLE), true)).run() },
+  { title: 'Side note', hint: 'Note in the margin', icon: 'note', keywords: 'sidenote footnote comment margin annotation', markdown: '[^1]', run: (e, r) => (e.chain().focus().deleteRange(r).run(), addSidenote(e)) },
   { title: 'Table', hint: 'Simple 3×3 table', icon: 'table', keywords: 'grid rows columns', markdown: '', run: (e, r) => chain(e, r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
 ]
 

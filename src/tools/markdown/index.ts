@@ -2,7 +2,7 @@ import './markdown.css'
 import type { ToolContext, ToolInstance } from '../registry'
 import { h, kbd, relativeTime, showMenu, toast, toggleMenu, type MenuEntry } from '../../ui/dom'
 import { icon } from '../../ui/icons'
-import { createEditor, tidy } from './editor'
+import { createEditor } from './editor'
 import { frontmatterPairs, joinFrontmatter, splitFrontmatter } from './frontmatter'
 import { FileWatcher, type WatchEvent } from './watcher'
 import * as fs from './files'
@@ -43,6 +43,7 @@ This is a **Notion-style** markdown editor that runs entirely in your browser.
 - Type \`/\` for blocks: headings, lists, to-dos, quotes, code, tables
 - Select text for **bold**, *italic*, \`code\` and [links](https://tools.huy.rocks)
 - Markdown shortcuts work as you type: \`#\`, \`-\`, \`1.\`, \`[ ]\`, \`>\`, \`\`\`
+- ==Highlight== anything worth remembering, and add side notes in the margin[^1]
 
 ## Live reload
 
@@ -56,6 +57,16 @@ Open a \`.md\` file and edit it in any other app. This page picks up the change 
 const watcher = new FileWatcher(handle, onChange)
 watcher.start() // polls every second, reads only when the file changed
 \`\`\`
+
+## Diagrams
+
+\`\`\`mermaid
+flowchart LR
+  A[Edit the file anywhere] --> B[Saved to disk]
+  B --> C[This page updates]
+\`\`\`
+
+[^1]: Side notes are saved as plain markdown footnotes.
 `
 
 const nameOf = (s: { name: string }) => (fs.MD_EXT.test(s.name) ? s.name : `${s.name}.md`)
@@ -122,8 +133,7 @@ export function mount(ctx: ToolContext): ToolInstance {
   })
 
   // ---------- Text model ----------
-  const mgr = () => ed.editor.markdown!
-  const normalize = (body: string) => tidy(mgr().serialize(mgr().parse(body)))
+  const normalize = (body: string) => ed.normalize(body)
   function currentText(): string {
     return joinFrontmatter(frontmatter, ed.getMarkdown())
   }

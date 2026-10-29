@@ -11,6 +11,9 @@ A Notion-style viewer and editor for `.md` files.
 - **Open any markdown file** with `⌘O`, by dropping it on the page, or from the recent list.
 - **Live reload.** The file is polled in the background (a cheap `lastModified`/`size` check every second, slower when the tab is hidden). If the text on disk differs from the version on screen, the page updates in place, keeps your scroll position, and briefly highlights the blocks that changed.
 - **Edit like a page.** `/` opens the block menu (headings, lists, to-dos, quotes, code, tables, dividers). Selecting text shows a small toolbar for bold, italic, strike, code and links. Markdown shortcuts (`#`, `-`, `1.`, `[ ]`, `>`, ```` ``` ````) work as you type.
+- **Highlights.** Select text and pick the highlighter in the toolbar (or `⌘⇧H`). Stored as `==text==`.
+- **Mermaid diagrams.** A ```` ```mermaid ```` code block renders as a diagram (`/diagram` inserts one). Click the diagram to edit its source; it re-renders as you type and follows the light/dark theme.
+- **Side notes.** Select text and click the note button in the toolbar, press `⌘⌥M`, or type `/side note`. Notes sit in the right margin next to their numbered reference (on narrow screens, click the number to show one). Click a note to edit it, `Enter` to save, and the `×` to remove it. They're saved as standard markdown footnotes (`[^1]` plus `[^1]: note` at the end of the file), so existing footnotes show up as side notes too.
 - **Autosave** writes back to the same file shortly after you stop typing (toggle it in the `⋯` menu). If the file changes on disk while you have unsaved edits, you get a choice instead of a silent overwrite.
 - **Source view** (`⌘/`) shows the raw markdown, exactly as it is on disk.
 - **Front matter** is kept verbatim and shown as a small property list.
@@ -32,7 +35,7 @@ npm run dev      # http://localhost:5173
 npm run build    # type-check + production build to dist/
 ```
 
-Stack: [Vite](https://vite.dev), TypeScript, [Tiptap](https://tiptap.dev) (ProseMirror) with `@tiptap/markdown`, and `lowlight` for code highlighting. No UI framework.
+Stack: [Vite](https://vite.dev), TypeScript, [Tiptap](https://tiptap.dev) (ProseMirror) with `@tiptap/markdown`, `lowlight` for code highlighting, and `mermaid` (loaded on demand) for diagrams. No UI framework.
 
 ```
 src/
@@ -42,6 +45,8 @@ src/
     index.ts              the Markdown tool: open/save, status, menus
     editor.ts             Tiptap setup, bubble menu, change highlighting
     slash.ts              "/" block menu
+    mermaid.ts            code block node view that renders mermaid diagrams
+    sidenote.ts           side notes, stored as markdown footnotes
     watcher.ts            background file polling
     files.ts              File System Access helpers, recents, folder grants
     frontmatter.ts        YAML front matter passthrough

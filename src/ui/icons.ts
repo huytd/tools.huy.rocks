@@ -40,6 +40,9 @@ const paths = {
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   alert: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17v.01"/>',
   image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m20.5 15.5-4.5-4.5-8.5 8.5"/>',
+  highlight: '<path d="m14.5 4.5 5 5-7.5 7.5h-5v-5z"/><path d="M7 12l5 5M4 20h7"/>',
+  note: '<path d="M5 4.5h14a1 1 0 0 1 1 1V15l-5 5H5a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1z"/><path d="M20 15h-4a1 1 0 0 0-1 1v4M8 9h8M8 12.5h5"/>',
+  diagram: '<rect x="3.5" y="4" width="6" height="5" rx="1.2"/><rect x="14.5" y="4" width="6" height="5" rx="1.2"/><rect x="9" y="15" width="6" height="5" rx="1.2"/><path d="M6.5 9v2.5h11V9M12 11.5V15"/>',
   arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
 } as const
 

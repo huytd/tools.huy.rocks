@@ -15,6 +15,9 @@
   --prose-clay-soft: rgba(217, 119, 87, 0.16);
   --prose-code-bg: #f0eee6;
   --prose-block-bg: #f5f4ed;
+  --prose-mark: rgba(255, 205, 41, 0.38);
+  --note-w: 220px;
+  --note-gap: 36px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .md-tool {
@@ -26,6 +29,7 @@
     --prose-clay-soft: rgba(224, 138, 107, 0.2);
     --prose-code-bg: rgba(236, 233, 225, 0.08);
     --prose-block-bg: #222220;
+    --prose-mark: rgba(240, 190, 60, 0.3);
   }
 }
 :root[data-theme='dark'] .md-tool {
@@ -37,6 +41,7 @@
   --prose-clay-soft: rgba(224, 138, 107, 0.2);
   --prose-code-bg: rgba(236, 233, 225, 0.08);
   --prose-block-bg: #222220;
+  --prose-mark: rgba(240, 190, 60, 0.3);
 }
 .md-tool.is-full {
   --doc-max: 100%;
@@ -605,7 +610,7 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   outline: 3px solid var(--prose-clay-soft);
 }
 .prose img.is-broken,
-.prose img:not([src]) {
+.prose img:not([src]):not(.ProseMirror-separator) {
   min-height: 44px;
   min-width: 200px;
   padding: 12px 14px;
@@ -672,6 +677,210 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   inset: 0;
   background: var(--prose-clay-soft);
   pointer-events: none;
+}
+
+/* Highlight */
+.prose mark {
+  background: var(--prose-mark);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0.05em 0.1em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Mermaid diagrams: the source shows while the cursor is inside the block */
+.prose .md-mermaid {
+  margin: 1.1em 0 1.3em;
+}
+.prose .md-mermaid > pre {
+  display: none;
+  margin: 0 0 8px;
+}
+.prose .md-mermaid.is-editing > pre,
+.prose .md-mermaid.has-error > pre,
+.prose .md-mermaid.is-empty > pre {
+  display: block;
+}
+.md-mermaid-view {
+  display: flex;
+  justify-content: center;
+  min-height: 48px;
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  overflow-x: auto;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s;
+}
+.md-mermaid-view:hover,
+.md-mermaid.is-editing .md-mermaid-view {
+  border-color: var(--prose-line);
+}
+.md-mermaid-view svg {
+  max-width: 100%;
+  height: auto;
+}
+.md-mermaid-note,
+.md-mermaid-error {
+  align-self: center;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--prose-faint);
+}
+.md-mermaid-error {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--danger);
+  white-space: pre-wrap;
+}
+
+/* Side notes: a numbered reference in the text, the note in the right margin */
+.prose {
+  counter-reset: sidenote;
+}
+.sidenote {
+  counter-increment: sidenote;
+}
+.sidenote-ref {
+  display: inline-block;
+  min-width: 1.1em;
+  padding: 0 0.15em;
+  margin-left: 1px;
+  border-radius: 3px;
+  font-family: var(--font);
+  font-size: 0.68em;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: super;
+  text-align: center;
+  color: var(--prose-clay);
+  cursor: pointer;
+  user-select: none;
+}
+.sidenote-ref::before {
+  content: counter(sidenote);
+}
+.sidenote:hover .sidenote-ref,
+.sidenote.is-editing .sidenote-ref,
+.sidenote.ProseMirror-selectednode .sidenote-ref {
+  background: var(--prose-clay-soft);
+}
+.ProseMirror .sidenote.ProseMirror-selectednode {
+  outline: none;
+}
+.sidenote-box {
+  position: relative;
+  float: right;
+  clear: right;
+  width: var(--note-w);
+  margin: 0.2em calc(-1 * (var(--note-w) + var(--note-gap))) 0.8em 0;
+  padding: 0 18px 0 10px;
+  border-left: 2px solid var(--prose-line);
+  font-family: var(--prose-sans);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  color: var(--prose-muted);
+  white-space: pre-wrap;
+  transition: border-color 0.12s;
+}
+.sidenote-box::before {
+  content: counter(sidenote) '. ';
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 0.92em;
+  color: var(--prose-clay);
+}
+.sidenote:hover .sidenote-box,
+.sidenote.is-editing .sidenote-box,
+.sidenote.ProseMirror-selectednode .sidenote-box {
+  border-left-color: var(--prose-clay);
+}
+.sidenote-text {
+  cursor: text;
+}
+.sidenote-text.is-placeholder {
+  color: var(--prose-faint);
+}
+.sidenote-input {
+  display: block;
+  width: 100%;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--prose-fg);
+  font: inherit;
+}
+.sidenote-input::placeholder {
+  color: var(--prose-faint);
+}
+.sidenote-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--prose-faint);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.sidenote:hover .sidenote-remove,
+.sidenote.is-editing .sidenote-remove,
+.sidenote-remove:focus-visible {
+  opacity: 1;
+}
+.sidenote-remove:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+.prose:not([contenteditable='true']) .sidenote-remove {
+  display: none;
+}
+/* Room for the margin when the page is full width */
+.md-tool.is-full .md-doc:has(.sidenote) {
+  padding-right: calc(var(--doc-pad) + var(--note-w) + var(--note-gap));
+}
+/* Not enough margin (or inside a table): the number toggles the note inline */
+@media (max-width: 1239px) {
+  .sidenote-box {
+    display: none;
+  }
+  .sidenote.is-open .sidenote-box {
+    display: block;
+    float: left;
+    clear: both;
+    width: 100%;
+    margin: 0.5em 0 0.7em;
+  }
+  .md-tool.is-full .md-doc:has(.sidenote) {
+    padding-right: var(--doc-pad);
+  }
+}
+.prose td .sidenote-box,
+.prose th .sidenote-box {
+  display: none;
+}
+.prose td .sidenote.is-open .sidenote-box,
+.prose th .sidenote.is-open .sidenote-box {
+  display: block;
+  float: none;
+  width: auto;
+  margin: 0.4em 0 0;
 }
 
 /* Placeholder */
