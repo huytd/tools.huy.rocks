@@ -794,6 +794,18 @@ body[data-tool='markdown'] .crumb-sep:last-child,
   user-select: none;
   transition: border-color 0.12s;
 }
+/* Undo prose text styles inside diagrams: labels are sized without them, so they'd wrap or clip */
+.md-mermaid-view {
+  font-family: var(--prose-sans);
+  word-break: normal;
+  overflow-wrap: normal;
+  letter-spacing: normal;
+  font-feature-settings: normal;
+}
+.prose .md-mermaid-view p {
+  margin: 0;
+  padding: 0;
+}
 .md-mermaid-view:hover,
 .md-mermaid.is-editing .md-mermaid-view {
   border-color: var(--prose-line);

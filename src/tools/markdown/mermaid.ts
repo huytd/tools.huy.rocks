@@ -13,7 +13,7 @@ const isMermaid = (n: PMNode) => n.type.name === 'codeBlock' && n.attrs.language
 let lib: Promise<Mermaid> | null = null
 let queue: Promise<unknown> = Promise.resolve()
 let seq = 0
-let themed: string | null = null
+let configured = ''
 
 const isDark = () => {
   const t = document.documentElement.dataset.theme
@@ -21,14 +21,22 @@ const isDark = () => {
   return matchMedia('(prefers-color-scheme: dark)').matches
 }
 
-function renderDiagram(code: string): Promise<string> {
+/**
+ * Mermaid sizes each label in a scratch element on <body>, so the font has to be named
+ * (not inherited) and loaded first, or the label boxes won't fit the text as displayed.
+ */
+function renderDiagram(code: string, fontFamily: string): Promise<string> {
   lib ??= import('mermaid').then((m) => m.default)
   const job = queue.then(async () => {
-    const mermaid = await lib!
+    const [mermaid] = await Promise.all([
+      lib!,
+      document.fonts.load(`16px ${fontFamily}`).catch(() => {}),
+      document.fonts.load(`bold 16px ${fontFamily}`).catch(() => {}),
+    ])
     const theme = isDark() ? 'dark' : 'neutral'
-    if (themed !== theme) {
-      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme, fontFamily: 'inherit' })
-      themed = theme
+    if (configured !== `${theme}|${fontFamily}`) {
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme, fontFamily })
+      configured = `${theme}|${fontFamily}`
     }
     const id = `md-mermaid-${++seq}`
     try {
@@ -43,11 +51,12 @@ function renderDiagram(code: string): Promise<string> {
   return job
 }
 
-// Re-render every diagram when the theme changes.
+// Re-render every diagram when the theme changes, or when a font finishes loading late.
 const views = new Set<() => void>()
 const rerenderAll = () => views.forEach((fn) => fn())
 new MutationObserver(rerenderAll).observe(document.documentElement, { attributeFilter: ['data-theme'] })
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rerenderAll)
+document.fonts.addEventListener('loadingdone', rerenderAll)
 
 /** Code block whose `mermaid` fences show the rendered diagram; the source appears while the cursor is inside. */
 export const CodeBlock = CodeBlockLowlight.extend({
@@ -85,7 +94,7 @@ export const CodeBlock = CodeBlockLowlight.extend({
           return
         }
         try {
-          const svg = await renderDiagram(text)
+          const svg = await renderDiagram(text, getComputedStyle(view).fontFamily)
           if (mine !== token) return
           view.innerHTML = svg
           dom.classList.remove('has-error', 'is-empty')
