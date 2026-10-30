@@ -645,7 +645,6 @@ export function mount(ctx: ToolContext): ToolInstance {
       else if (session.kind === 'snapshot' && unreadable)
         [label, tone, tip] = ['Snapshot', 'muted', 'This browser can’t re-read the file. Use Chrome or Edge for live reload.']
       else if (unreadable) [label, tone, tip] = ['Not watching', 'warn', 'The file could not be read. Reopen it to resume.']
-      else [label, tone, tip] = ['Live', 'live', 'Watching the file for changes on disk']
     }
     status.hidden = !label
     status.className = `md-status tone-${tone}`
