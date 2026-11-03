@@ -30,6 +30,13 @@ export const tools: Tool[] = [
     icon: 'fileText',
     load: () => import('./markdown'),
   },
+  {
+    id: 'diagram',
+    name: 'Diagram',
+    description: 'Write Mermaid, PlantUML or D2 and see it drawn as you type, C4 models included. Export SVG or PNG.',
+    icon: 'diagram',
+    load: () => import('./diagram'),
+  },
 ]
 
 export const toolIcon = (t: Tool, size = 16) => icon(t.icon, size)

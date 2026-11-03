@@ -4,52 +4,9 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { h } from '../../ui/dom'
-
-type Mermaid = typeof import('mermaid').default
+import { renderMermaid } from '../../ui/mermaid'
 
 const isMermaid = (n: PMNode) => n.type.name === 'codeBlock' && n.attrs.language === 'mermaid'
-
-// ---------- Rendering (lazy-loaded, one diagram at a time) ----------
-let lib: Promise<Mermaid> | null = null
-let queue: Promise<unknown> = Promise.resolve()
-let seq = 0
-let configured = ''
-
-const isDark = () => {
-  const t = document.documentElement.dataset.theme
-  if (t === 'light' || t === 'dark') return t === 'dark'
-  return matchMedia('(prefers-color-scheme: dark)').matches
-}
-
-/**
- * Mermaid sizes each label in a scratch element on <body>, so the font has to be named
- * (not inherited) and loaded first, or the label boxes won't fit the text as displayed.
- */
-function renderDiagram(code: string, fontFamily: string): Promise<string> {
-  lib ??= import('mermaid').then((m) => m.default)
-  const job = queue.then(async () => {
-    const [mermaid] = await Promise.all([
-      lib!,
-      document.fonts.load(`16px ${fontFamily}`).catch(() => {}),
-      document.fonts.load(`bold 16px ${fontFamily}`).catch(() => {}),
-    ])
-    const theme = isDark() ? 'dark' : 'neutral'
-    if (configured !== `${theme}|${fontFamily}`) {
-      mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme, fontFamily })
-      configured = `${theme}|${fontFamily}`
-    }
-    const id = `md-mermaid-${++seq}`
-    try {
-      return (await mermaid.render(id, code)).svg
-    } finally {
-      // Mermaid can leave its scratch element behind when a diagram fails to parse.
-      document.getElementById(id)?.remove()
-      document.getElementById(`d${id}`)?.remove()
-    }
-  })
-  queue = job.catch(() => {})
-  return job
-}
 
 // Re-render every diagram when the theme changes, or when a font finishes loading late.
 const views = new Set<() => void>()
@@ -94,7 +51,7 @@ export const CodeBlock = CodeBlockLowlight.extend({
           return
         }
         try {
-          const svg = await renderDiagram(text, getComputedStyle(view).fontFamily)
+          const svg = await renderMermaid(text, getComputedStyle(view).fontFamily)
           if (mine !== token) return
           view.innerHTML = svg
           dom.classList.remove('has-error', 'is-empty')

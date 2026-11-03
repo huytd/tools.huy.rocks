@@ -1,7 +1,7 @@
 {
   "name": "tools.huy.rocks",
   "version": "0.1.0",
-  "description": "A small collection of browser tools. First up: a Notion-style markdown viewer/editor with live reload.",
+  "description": "A small collection of browser tools: a Notion-style markdown editor with live reload, and a Mermaid / PlantUML / D2 diagram editor.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -9,6 +9,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@terrastruct/d2": "^0.1.33",
     "@tiptap/core": "^3.32.0",
     "@tiptap/extension-bubble-menu": "^3.32.0",
     "@tiptap/extension-code-block-lowlight": "^3.32.0",

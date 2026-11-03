@@ -28,6 +28,26 @@ Saving in place and reliable live reload use the [File System Access API](https:
 
 Opening a file never writes to it. Once you edit in the rich view, the document is re-serialized as GitHub-flavored markdown, so stylistic details (for example `*` vs `-` bullets, table column padding) may be normalized. Use the source view when byte-exact control matters.
 
+## Diagram
+
+Write diagram source on the left and see it drawn on the right as you type. Supports three languages, each with [C4 model](https://c4model.com) diagrams (pick one from **Examples**):
+
+| Language | Renders | C4 support |
+| --- | --- | --- |
+| [Mermaid](https://mermaid.js.org) | In your browser | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` |
+| [D2](https://d2lang.com) | In your browser, via D2's official WebAssembly build (~6 MB, loaded the first time you pick D2) | The built-in C4 theme (`theme-id: 303`) and the `c4-person` shape |
+| [PlantUML](https://plantuml.com) | On a PlantUML server | [C4-PlantUML](https://github.com/plantuml-stdlib/C4-PlantUML) from the standard library (`!include <C4/C4_Container>`) |
+
+- **PlantUML needs a server.** It's a Java program with no practical browser build, so its source is sent to a PlantUML server to render. Nothing is sent until you agree, and you can point it at your own server instead of plantuml.com (`docker run -p 8080:8080 plantuml/plantuml-server`, then `http://localhost:8080`). Change it later from the `⋯` menu.
+- **Claude theme for Mermaid.** Mermaid diagrams default to a look modeled on Claude's own diagrams: warm neutral surfaces, thin warm-gray lines and a single clay accent (people in C4, notes, activations, sequence numbers), drawn on an ivory card, in light and dark. C4 elements get tinted fills: clay for people, slate blue for your systems, containers and components, dashed gray for external ones. Switch to Mermaid's own themes from the `⋯` menu.
+- **Errors** show under the source with the offending line marked in the gutter; the last good drawing stays on screen, dimmed.
+- **Pan and zoom.** Drag or scroll to pan, `⌘`/`Ctrl` + scroll or pinch to zoom, `0` to fit, `1` for actual size. Until you move it, the view keeps the diagram fitted.
+- **Export** as SVG or PNG (2×), or copy either to the clipboard.
+- **Files.** `⌘O` (or drop a file) opens `.mmd`, `.mermaid`, `.puml`, `.plantuml`, `.d2` and picks the language from the extension. `⌘S` downloads the source.
+- **Share links.** `⋯ → Copy link` puts the whole diagram, compressed, in the URL fragment, so it never reaches a server.
+- D2 options in the `⋯` menu: ELK or Dagre layout, sketch style. Settings written in the file (`vars: { d2-config: … }`) take precedence.
+- Your source for each language is kept in the browser's local storage between visits.
+
 ## Development
 
 ```sh
@@ -36,12 +56,13 @@ npm run dev      # http://localhost:5173
 npm run build    # type-check + production build to dist/
 ```
 
-Stack: [Vite](https://vite.dev), TypeScript, [Tiptap](https://tiptap.dev) (ProseMirror) with `@tiptap/markdown`, `lowlight` for code highlighting, and `mermaid` (loaded on demand) for diagrams. No UI framework.
+Stack: [Vite](https://vite.dev), TypeScript, [Tiptap](https://tiptap.dev) (ProseMirror) with `@tiptap/markdown`, `lowlight` for code highlighting, `mermaid` and `@terrastruct/d2` (both loaded on demand) for diagrams. No UI framework.
 
 ```
 src/
   main.ts                 shell: router, tool switcher, theme
   tools/registry.ts       list of tools (add new ones here)
+  ui/mermaid.ts           shared mermaid renderer (one queue, global config)
   tools/markdown/
     index.ts              the Markdown tool: open/save, status, menus
     editor.ts             Tiptap setup, bubble menu, change highlighting
@@ -52,6 +73,14 @@ src/
     watcher.ts            background file polling
     files.ts              File System Access helpers, recents, folder grants
     frontmatter.ts        YAML front matter passthrough
+  tools/diagram/
+    index.ts              the Diagram tool: panes, menus, export, share links
+    engines.ts            Mermaid, PlantUML (server) and D2 (WebAssembly) renderers
+    mermaid-theme.ts      the Claude look for Mermaid, including C4
+    examples.ts           examples per language, C4 included
+    editor.ts             source textarea with line numbers
+    viewport.ts           pan and zoom
+    svg.ts                SVG sanitizing, sizing and PNG export
 ```
 
 ### Adding a tool
