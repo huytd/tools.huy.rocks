@@ -1,0 +1,68 @@
+/* SVG-specific styles; the layout lives in ui/workbench/workbench.css. */
+.sv-tool {
+  --sv-checker-a: #ffffff;
+  --sv-checker-b: #e9e8e4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .sv-tool {
+    --sv-checker-a: #2a2a2a;
+    --sv-checker-b: #222222;
+  }
+}
+:root[data-theme='dark'] .sv-tool {
+  --sv-checker-a: #2a2a2a;
+  --sv-checker-b: #222222;
+}
+
+/* The artboard: the image at its own size, with the chosen backdrop behind it */
+.sv-art {
+  display: block;
+  max-width: none;
+  box-shadow: 0 0 0 1px var(--line-strong), 0 2px 12px rgba(15, 15, 15, 0.06);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.sv-art:not([src]) {
+  display: none;
+}
+.sv-tool[data-backdrop='checker'] .sv-art {
+  background-color: var(--sv-checker-a);
+  background-image: conic-gradient(var(--sv-checker-b) 25%, transparent 0 50%, var(--sv-checker-b) 0 75%, transparent 0);
+  background-size: 16px 16px;
+}
+.sv-tool[data-backdrop='light'] .sv-art {
+  background: #ffffff;
+}
+.sv-tool[data-backdrop='dark'] .sv-art {
+  background: #141413;
+}
+
+/* Backdrop switch in the preview footer */
+.sv-swatches {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.sv-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.sv-swatch[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 0 2px var(--bg), 0 0 0 3.5px var(--accent);
+}
+.sv-swatch-checker {
+  background-color: #ffffff;
+  background-image: conic-gradient(#cfcdc6 25%, transparent 0 50%, #cfcdc6 0 75%, transparent 0);
+  background-size: 8px 8px;
+}
+.sv-swatch-light {
+  background: #ffffff;
+}
+.sv-swatch-dark {
+  background: #141413;
+}

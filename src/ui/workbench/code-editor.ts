@@ -1,4 +1,4 @@
-import { h } from '../../ui/dom'
+import { h } from '../dom'
 
 export interface SourceEditor {
   el: HTMLElement
@@ -13,17 +13,17 @@ export interface SourceEditor {
 const INDENT = '  '
 
 /** A plain textarea with a line-number gutter. Tab indents, Shift+Tab outdents. */
-export function createSourceEditor(onInput: () => void): SourceEditor {
-  const gutter = h('div', { class: 'dg-gutter', 'aria-hidden': 'true' })
+export function createSourceEditor(onInput: () => void, label = 'Source'): SourceEditor {
+  const gutter = h('div', { class: 'wb-gutter', 'aria-hidden': 'true' })
   const textarea = h('textarea', {
-    class: 'dg-textarea',
+    class: 'wb-textarea',
     spellcheck: 'false',
     autocapitalize: 'off',
     autocomplete: 'off',
     wrap: 'off',
-    'aria-label': 'Diagram source',
+    'aria-label': label,
   })
-  const el = h('div', { class: 'dg-code' }, gutter, textarea)
+  const el = h('div', { class: 'wb-code' }, gutter, textarea)
 
   let lineCount = 0
   let errorLine: number | null = null
@@ -93,15 +93,17 @@ export function createSourceEditor(onInput: () => void): SourceEditor {
     },
     setValue(text, opts = {}) {
       if (text === textarea.value) return
-      if (opts.undoable && document.activeElement === textarea) {
+      if (opts.undoable) {
+        // insertText only joins the undo history of a focused field.
+        textarea.focus({ preventScroll: true })
         textarea.select()
         insert(text)
         textarea.setSelectionRange(0, 0)
-        textarea.scrollTop = 0
       } else {
         textarea.value = text
-        textarea.scrollTop = 0
       }
+      textarea.scrollTop = 0
+      textarea.scrollLeft = 0
       renderGutter()
       syncScroll()
     },

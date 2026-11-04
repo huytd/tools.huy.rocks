@@ -3,9 +3,8 @@ import type { ToolContext, ToolInstance } from '../registry'
 import { h, kbd, toast, toggleMenu, type MenuEntry } from '../../ui/dom'
 import { icon } from '../../ui/icons'
 import { isDark } from '../../ui/mermaid'
-import { createSourceEditor } from './editor'
-import { createViewport } from './viewport'
-import { download, prepareSvg, serializeSvg, svgToPng, type PreparedSvg } from './svg'
+import { createPrefs, createWorkbench, packText, unpackText } from '../../ui/workbench'
+import { download, prepareSvg, serializeSvg, svgToPng, type PreparedSvg } from '../../ui/workbench/svg'
 import { EXAMPLES, STARTERS } from './examples'
 import { MERMAID_LOOKS, polishClaude, type MermaidLook } from './mermaid-theme'
 import {
@@ -22,37 +21,11 @@ import {
   type RenderOptions,
 } from './engines'
 
-const pref = {
-  get(key: string, fallback: string) {
-    try {
-      return localStorage.getItem(`dg.${key}`) ?? fallback
-    } catch {
-      return fallback
-    }
-  },
-  set(key: string, value: string) {
-    try {
-      localStorage.setItem(`dg.${key}`, value)
-    } catch {}
-  },
-}
+const pref = createPrefs('dg')
 
 const isLang = (v: string): v is Lang => LANGS.some((l) => l.id === v)
 
-// ---------- Share links: #/diagram/<lang>/<deflated, base64url source> ----------
-async function packSource(text: string): Promise<string> {
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('deflate-raw'))
-  const bytes = new Uint8Array(await new Response(stream).arrayBuffer())
-  let bin = ''
-  for (const b of bytes) bin += String.fromCharCode(b)
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-async function unpackSource(data: string): Promise<string> {
-  const bin = atob(data.replace(/-/g, '+').replace(/_/g, '/'))
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
-  return new Response(stream).text()
-}
+// Share links: #/diagram/<lang>/<deflated, base64url source>
 function linkFromHash(): { lang: Lang; data: string } | null {
   const m = /^#\/diagram\/(\w+)\/([\w-]+)/.exec(location.hash)
   return m && isLang(m[1]) ? { lang: m[1], data: m[2] } : null
@@ -71,7 +44,6 @@ export function mount(ctx: ToolContext): ToolInstance {
   let d2Sketch = pref.get('d2.sketch', '0') === '1'
   const storedLook = pref.get('mermaid.look', 'claude')
   let mermaidLook: MermaidLook = MERMAID_LOOKS.some((l) => l.id === storedLook) ? (storedLook as MermaidLook) : 'claude'
-  let split = Math.min(0.75, Math.max(0.2, Number(pref.get('split', '0.38')) || 0.38))
 
   let current: (PreparedSvg & { isError: boolean }) | null = null
   let renderToken = 0
@@ -84,49 +56,21 @@ export function mount(ctx: ToolContext): ToolInstance {
   let disposed = false
 
   // ---------- DOM ----------
-  const editor = createSourceEditor(() => onSourceInput())
-  const errorBox = h('div', { class: 'dg-error', hidden: true, role: 'alert' })
-  const editorPane = h('section', { class: 'dg-editor-pane', 'aria-label': 'Source' }, editor.el, errorBox)
-  const resizer = h('div', {
-    class: 'dg-resizer',
-    role: 'separator',
-    'aria-orientation': 'vertical',
-    'aria-label': 'Resize panes',
-    tabindex: '0',
+  const wb = createWorkbench({
+    ctx,
+    className: 'dg-tool',
+    prefs: pref,
+    sourceLabel: 'Diagram source',
+    previewLabel: 'Diagram preview',
+    accept: FILE_ACCEPT,
+    onInput: () => onSourceInput(),
+    onFile: (f) => openFile(f),
   })
-  const stage = h('div', { class: 'dg-stage' })
-  const note = h('div', { class: 'dg-note', hidden: true })
-  const overlay = h('div', { class: 'dg-overlay', hidden: true })
-  const engineLabel = h('span', { class: 'dg-engine' })
-  const zoomLabel = h('button', { class: 'dg-zoom-btn dg-zoom-pct', title: 'Actual size (1)' }, '100%')
-  const zoomOut = h('button', { class: 'dg-zoom-btn', html: icon('minus', 14), title: 'Zoom out (−)', 'aria-label': 'Zoom out' })
-  const zoomIn = h('button', { class: 'dg-zoom-btn', html: icon('plus', 14), title: 'Zoom in (+)', 'aria-label': 'Zoom in' })
-  const zoomFit = h('button', { class: 'dg-zoom-btn', html: icon('fit', 14), title: 'Fit to view (0)', 'aria-label': 'Fit to view' })
-  const foot = h(
-    'div',
-    { class: 'dg-foot' },
-    engineLabel,
-    h('div', { class: 'dg-zoom' }, zoomOut, zoomLabel, zoomIn, zoomFit),
-  )
-  const preview = h(
-    'section',
-    { class: 'dg-preview', tabindex: '0', 'aria-label': 'Diagram preview' },
-    stage,
-    note,
-    overlay,
-    foot,
-  )
-  const fileInput = h('input', { type: 'file', accept: FILE_ACCEPT, hidden: true })
-  const dropHint = h('div', { class: 'dg-drop' }, h('div', {}, 'Drop to open'))
-  const root = h('div', { class: 'dg-tool' }, editorPane, resizer, preview, dropHint, fileInput)
-  root.style.setProperty('--dg-split', String(split))
-  ctx.root.append(root)
+  const { editor, preview, stage, overlay, vp, root } = wb
 
   // Top bar
-  const langBtn = h('button', { class: 'dg-crumb-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', title: 'Diagram language' })
-  const fileLabel = h('span', { class: 'dg-file', hidden: true })
-  const status = h('span', { class: 'dg-status', hidden: true })
-  ctx.crumbs.append(h('span', { class: 'dg-sep' }, '/'), langBtn, fileLabel, status)
+  const langBtn = h('button', { class: 'wb-crumb-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', title: 'Diagram language' })
+  wb.crumbLead.append(langBtn)
 
   const examplesBtn = h('button', { class: 'text-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, 'Examples')
   const exportBtn = h('button', {
@@ -147,23 +91,13 @@ export function mount(ctx: ToolContext): ToolInstance {
   })
   ctx.actions.append(examplesBtn, exportBtn, moreBtn)
 
-  const vp = createViewport(preview, stage, () => {
-    zoomLabel.textContent = `${Math.round(vp.scale * 100)}%`
-  })
-  zoomIn.addEventListener('click', () => vp.zoomBy(1.25))
-  zoomOut.addEventListener('click', () => vp.zoomBy(0.8))
-  zoomFit.addEventListener('click', () => vp.fit())
-  zoomLabel.addEventListener('click', () => vp.actualSize())
-
   // ---------- Chrome ----------
   function renderChrome() {
     const info = langInfo(lang)
-    langBtn.replaceChildren(h('span', {}, info.name), h('span', { class: 'dg-chev', html: icon('chevronDown', 13) }))
-    fileLabel.hidden = !fileName
-    fileLabel.textContent = fileName ?? ''
-    fileLabel.title = fileName ?? ''
+    langBtn.replaceChildren(h('span', {}, info.name), h('span', { class: 'wb-chev', html: icon('chevronDown', 13) }))
+    wb.setFileName(fileName)
     root.dataset.lang = lang
-    engineLabel.textContent =
+    wb.info.textContent =
       lang === 'plantuml' ? `PlantUML · rendered by ${hostOf(pumlServer)}` : `${info.name} · rendered in your browser`
     const canExport = !!current && !current.isError
     exportBtn.disabled = !canExport
@@ -177,23 +111,10 @@ export function mount(ctx: ToolContext): ToolInstance {
     }
   }
 
-  function setStatus(text: string | null, tone: 'busy' | 'danger' | null = null) {
-    status.hidden = !text
-    status.textContent = text ?? ''
-    status.className = `dg-status${tone ? ` tone-${tone}` : ''}`
-  }
-
+  const setStatus = wb.setStatus
+  const showNote = wb.showNote
   function setError(message: string | null, line: number | null = null) {
-    errorBox.hidden = !message
-    errorBox.textContent = message ?? ''
-    editor.setErrorLine(message ? line : null)
-    preview.classList.toggle('is-stale', !!message && !current?.isError && !!current)
-    if (message) setStatus('Error', 'danger')
-  }
-
-  function showNote(text: string | null) {
-    note.hidden = !text
-    note.textContent = text ?? ''
+    wb.setError(message, { line, stale: !!current && !current.isError })
   }
 
   // ---------- Rendering ----------
@@ -416,38 +337,6 @@ export function mount(ctx: ToolContext): ToolInstance {
     setLang(detected, { source: text, fileName: file.name })
   }
 
-  fileInput.addEventListener('change', () => {
-    const f = fileInput.files?.[0]
-    fileInput.value = ''
-    if (f) openFile(f)
-  })
-
-  let dragDepth = 0
-  const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files')
-  root.addEventListener('dragenter', (e) => {
-    if (!hasFiles(e)) return
-    e.preventDefault()
-    dragDepth++
-    root.classList.add('is-dragging')
-  })
-  root.addEventListener('dragover', (e) => {
-    if (hasFiles(e)) e.preventDefault()
-  })
-  root.addEventListener('dragleave', () => {
-    if (--dragDepth <= 0) {
-      dragDepth = 0
-      root.classList.remove('is-dragging')
-    }
-  })
-  root.addEventListener('drop', (e) => {
-    if (!hasFiles(e)) return
-    e.preventDefault()
-    dragDepth = 0
-    root.classList.remove('is-dragging')
-    const f = e.dataTransfer?.files[0]
-    if (f) openFile(f)
-  })
-
   const baseName = () => (fileName ? fileName.replace(/\.[^.]+$/, '') : 'diagram')
 
   function saveSource() {
@@ -501,7 +390,7 @@ export function mount(ctx: ToolContext): ToolInstance {
 
   async function copyLink() {
     try {
-      const data = await packSource(editor.value)
+      const data = await packText(editor.value)
       const url = `${location.origin}${location.pathname}#/diagram/${lang}/${data}`
       await navigator.clipboard.writeText(url)
       toast(url.length > 8000 ? 'Link copied (it’s long; some apps may cut it off)' : 'Link copied')
@@ -515,7 +404,7 @@ export function mount(ctx: ToolContext): ToolInstance {
     if (!link) return false
     history.replaceState(null, '', '#/diagram')
     try {
-      const text = await unpackSource(link.data)
+      const text = await unpackText(link.data)
       if (disposed) return true
       setLang(link.lang, { source: text })
       toast('Opened a shared diagram')
@@ -583,7 +472,7 @@ export function mount(ctx: ToolContext): ToolInstance {
       moreBtn,
       () => {
         const entries: MenuEntry[] = [
-          { label: 'Open file…', icon: icon('folder'), hint: kbd('mod+o'), onSelect: () => fileInput.click() },
+          { label: 'Open file…', icon: icon('folder'), hint: kbd('mod+o'), onSelect: wb.openFilePicker },
           { label: 'Save source', icon: icon('save'), hint: kbd('mod+s'), onSelect: saveSource },
           { label: 'Copy link', icon: icon('link'), description: 'The diagram travels inside the link', onSelect: copyLink },
         ]
@@ -651,7 +540,7 @@ export function mount(ctx: ToolContext): ToolInstance {
     const k = e.key.toLowerCase()
     if (k === 'o') {
       e.preventDefault()
-      fileInput.click()
+      wb.openFilePicker()
     } else if (k === 's') {
       e.preventDefault()
       saveSource()
@@ -661,41 +550,6 @@ export function mount(ctx: ToolContext): ToolInstance {
     }
   }
   document.addEventListener('keydown', onKey)
-
-  // ---------- Resizer ----------
-  resizer.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return
-    e.preventDefault()
-    resizer.setPointerCapture(e.pointerId)
-    root.classList.add('is-resizing')
-    const box = root.getBoundingClientRect()
-    const move = (ev: PointerEvent) => {
-      split = Math.min(0.75, Math.max(0.2, (ev.clientX - box.left) / box.width))
-      root.style.setProperty('--dg-split', String(split))
-    }
-    const up = () => {
-      root.classList.remove('is-resizing')
-      resizer.removeEventListener('pointermove', move)
-      resizer.removeEventListener('pointerup', up)
-      resizer.removeEventListener('pointercancel', up)
-      pref.set('split', split.toFixed(3))
-    }
-    resizer.addEventListener('pointermove', move)
-    resizer.addEventListener('pointerup', up)
-    resizer.addEventListener('pointercancel', up)
-  })
-  resizer.addEventListener('dblclick', () => {
-    split = 0.38
-    root.style.setProperty('--dg-split', String(split))
-    pref.set('split', String(split))
-  })
-  resizer.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-    e.preventDefault()
-    split = Math.min(0.75, Math.max(0.2, split + (e.key === 'ArrowLeft' ? -0.03 : 0.03)))
-    root.style.setProperty('--dg-split', String(split))
-    pref.set('split', split.toFixed(3))
-  })
 
   // ---------- Theme ----------
   const onTheme = () => renderNow()
@@ -722,13 +576,12 @@ export function mount(ctx: ToolContext): ToolInstance {
       abort?.abort()
       clearTimeout(renderTimer)
       clearTimeout(busyTimer)
-      vp.destroy()
       themeObserver.disconnect()
       mq.removeEventListener('change', onTheme)
       document.fonts.removeEventListener('loadingdone', onFonts)
       document.removeEventListener('keydown', onKey)
       window.removeEventListener('hashchange', onHashChange)
-      root.remove()
+      wb.destroy()
     },
   }
 }

@@ -7,6 +7,8 @@ export interface Viewport {
   fit(): void
   zoomBy(factor: number): void
   actualSize(): void
+  /** Re-apply the current view, e.g. after the content's size changed. */
+  refresh(): void
   readonly scale: number
   readonly moved: boolean
   /** Fit again on the next setSize, e.g. after switching examples. */
@@ -18,7 +20,17 @@ const MIN = 0.05
 const MAX = 8
 const PAD = 32
 
-export function createViewport(pane: HTMLElement, stage: HTMLElement, onChange: () => void): Viewport {
+export interface ViewportOptions {
+  /**
+   * Take over part of the zoom by resizing the content itself (sharper than a CSS scale for
+   * images). Receives the zoom level and returns the scale still to apply as a transform.
+   */
+  applyScale?: (scale: number) => number
+  /** How far fitting may enlarge small content (default 1: never past actual size). */
+  maxFit?: number
+}
+
+export function createViewport(pane: HTMLElement, stage: HTMLElement, onChange: () => void, opts: ViewportOptions = {}): Viewport {
   let x = 0
   let y = 0
   let k = 1
@@ -27,7 +39,8 @@ export function createViewport(pane: HTMLElement, stage: HTMLElement, onChange: 
   let moved = false
 
   const apply = () => {
-    stage.style.transform = `translate(${x}px, ${y}px) scale(${k})`
+    const rest = opts.applyScale ? opts.applyScale(k) : k
+    stage.style.transform = `translate(${x}px, ${y}px) scale(${rest})`
     onChange()
   }
 
@@ -35,7 +48,7 @@ export function createViewport(pane: HTMLElement, stage: HTMLElement, onChange: 
     if (!w || !h) return
     const W = pane.clientWidth
     const H = pane.clientHeight
-    k = Math.min(1, (W - PAD * 2) / w, (H - PAD * 2) / h)
+    k = Math.min(opts.maxFit ?? 1, (W - PAD * 2) / w, (H - PAD * 2) / h)
     k = Math.max(MIN, k)
     x = (W - w * k) / 2
     y = Math.max(PAD, (H - h * k) / 2)
@@ -73,7 +86,7 @@ export function createViewport(pane: HTMLElement, stage: HTMLElement, onChange: 
 
   let drag: { id: number; sx: number; sy: number; x: number; y: number } | null = null
   const onDown = (e: PointerEvent) => {
-    if (e.button !== 0 || (e.target as Element).closest('a, button, input, .dg-overlay')) return
+    if (e.button !== 0 || (e.target as Element).closest('a, button, input, .wb-overlay')) return
     drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x, y }
     pane.setPointerCapture(e.pointerId)
     pane.classList.add('is-panning')
@@ -107,7 +120,7 @@ export function createViewport(pane: HTMLElement, stage: HTMLElement, onChange: 
   pane.addEventListener('pointercancel', onUp)
   pane.addEventListener('keydown', onKey)
   pane.addEventListener('dblclick', (e) => {
-    if (!(e.target as Element).closest('.dg-overlay, .dg-zoom')) fit()
+    if (!(e.target as Element).closest('.wb-overlay, .wb-zoom')) fit()
   })
   const ro = new ResizeObserver(() => {
     if (!moved) fit()
@@ -130,6 +143,7 @@ export function createViewport(pane: HTMLElement, stage: HTMLElement, onChange: 
       if (h * k <= pane.clientHeight) y = (pane.clientHeight - h) / 2
       apply()
     },
+    refresh: () => apply(),
     get scale() {
       return k
     },

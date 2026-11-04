@@ -37,6 +37,13 @@ export const tools: Tool[] = [
     icon: 'diagram',
     load: () => import('./diagram'),
   },
+  {
+    id: 'svg',
+    name: 'SVG',
+    description: 'Edit SVG code with a live preview. Format, optimize with SVGO, export PNG or a data URI.',
+    icon: 'vector',
+    load: () => import('./svg'),
+  },
 ]
 
 export const toolIcon = (t: Tool, size = 16) => icon(t.icon, size)

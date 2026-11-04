@@ -49,6 +49,7 @@ const paths = {
   copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>',
   server: '<rect x="4" y="4.5" width="16" height="6" rx="1.5"/><rect x="4" y="13.5" width="16" height="6" rx="1.5"/><path d="M7.5 7.5h.01M7.5 16.5h.01" stroke-width="2.4"/>',
   external: '<path d="M14 4.5h5.5V10M19.5 4.5 11 13M17 14v4.5a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1H10"/>',
+  vector: '<path d="M5 18.5C7 10 11 6.5 19 5.5"/><rect x="2.5" y="16.5" width="4" height="4" rx="1"/><rect x="17.5" y="3.5" width="4" height="4" rx="1"/><path d="M5 18.5 11 13M19 5.5l-4 6" opacity=".45"/><circle cx="11" cy="13" r="1.2" fill="currentColor"/><circle cx="15" cy="11.5" r="1.2" fill="currentColor"/>',
   arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
 } as const
 

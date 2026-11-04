@@ -1,7 +1,7 @@
 {
   "name": "tools.huy.rocks",
   "version": "0.1.0",
-  "description": "A small collection of browser tools: a Notion-style markdown editor with live reload, and a Mermaid / PlantUML / D2 diagram editor.",
+  "description": "A small collection of browser tools: a Notion-style markdown editor with live reload, a Mermaid / PlantUML / D2 diagram editor, and an SVG editor.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -24,7 +24,8 @@
     "@tiptap/suggestion": "^3.32.0",
     "idb-keyval": "^6.3.0",
     "lowlight": "^3.3.0",
-    "mermaid": "^12.2.0"
+    "mermaid": "^12.2.0",
+    "svgo": "^4.1.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

@@ -59,24 +59,31 @@ export function serializeSvg(svg: SVGSVGElement): string {
 }
 
 /** Rasterize at `scale`× on a solid background. */
-export async function svgToPng(svg: SVGSVGElement, width: number, height: number, background: string, scale = 2): Promise<Blob> {
-  const url = URL.createObjectURL(new Blob([serializeSvg(svg)], { type: 'image/svg+xml' }))
+export function svgToPng(svg: SVGSVGElement, width: number, height: number, background: string | null, scale = 2): Promise<Blob> {
+  return markupToPng(serializeSvg(svg), width, height, background, scale)
+}
+
+/** Rasterize SVG markup at `scale`×; a null background keeps transparency. */
+export async function markupToPng(markup: string, width: number, height: number, background: string | null, scale = 2): Promise<Blob> {
+  const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml' }))
   try {
     const img = new Image()
     img.decoding = 'async'
     img.src = url
     await img.decode()
-    // Browsers cap canvas area; shrink very large diagrams to fit.
+    // Browsers cap canvas area; shrink very large images to fit.
     const maxSide = 16384
     const maxArea = 120e6
     let s = Math.min(scale, maxSide / width, maxSide / height, Math.sqrt(maxArea / (width * height)))
-    s = Math.max(s, 0.1)
+    s = Math.max(s, 0.01)
     const canvas = document.createElement('canvas')
-    canvas.width = Math.round(width * s)
-    canvas.height = Math.round(height * s)
+    canvas.width = Math.max(1, Math.round(width * s))
+    canvas.height = Math.max(1, Math.round(height * s))
     const ctx = canvas.getContext('2d')!
-    ctx.fillStyle = background
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    if (background) {
+      ctx.fillStyle = background
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+    }
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
     return await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG export failed'))), 'image/png'),

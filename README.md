@@ -48,6 +48,20 @@ Write diagram source on the left and see it drawn on the right as you type. Supp
 - D2 options in the `⋯` menu: ELK or Dagre layout, sketch style. Settings written in the file (`vars: { d2-config: … }`) take precedence.
 - Your source for each language is kept in the browser's local storage between visits.
 
+## SVG
+
+An SVG code editor with a live preview: write or paste markup on the left and see it drawn on the right as you type.
+
+- **Isolated preview.** The SVG is drawn as an image, so its `<style>` can't restyle the page and its scripts never run. As in any `<img>`, external images and web fonts it links to aren't loaded; embedded ones (`data:` URIs) are. CSS and SMIL animations play.
+- **Errors** show under the source with the line marked; the last good drawing stays on screen, dimmed.
+- **Missing `xmlns`** (common in hand-written or copied snippets) is added for the preview and exports, and the info line says so.
+- **Info line**: size, `viewBox`, file size and element count.
+- **Backgrounds**: transparent (checkerboard), light or dark behind the artboard.
+- **Pan and zoom** as in the Diagram tool. Zooming redraws the vector, so it stays sharp; small icons fit at up to 8×.
+- **Format** (`⇧⌥F`) re-indents the markup and leaves the inside of `<text>`/`<style>` alone. **Optimize** shrinks it with [SVGO](https://github.com/svg/svgo) (default preset, multipass) and reports the saving; both are undoable.
+- **Export**: download SVG or PNG at 1×, 2× or 4× (transparent background), or copy the SVG, a PNG, a `data:` URI, or a CSS `background-image` rule.
+- **Files and links**: `⌘O` or drop a `.svg`, `⌘S` downloads it, `⋯ → Copy link` puts the SVG in the URL fragment. Your work is kept in local storage between visits.
+
 ## Development
 
 ```sh
@@ -56,13 +70,18 @@ npm run dev      # http://localhost:5173
 npm run build    # type-check + production build to dist/
 ```
 
-Stack: [Vite](https://vite.dev), TypeScript, [Tiptap](https://tiptap.dev) (ProseMirror) with `@tiptap/markdown`, `lowlight` for code highlighting, `mermaid` and `@terrastruct/d2` (both loaded on demand) for diagrams. No UI framework.
+Stack: [Vite](https://vite.dev), TypeScript, [Tiptap](https://tiptap.dev) (ProseMirror) with `@tiptap/markdown`, `lowlight` for code highlighting, `mermaid` and `@terrastruct/d2` for diagrams and `svgo` for SVG optimizing (all loaded on demand). No UI framework.
 
 ```
 src/
   main.ts                 shell: router, tool switcher, theme
   tools/registry.ts       list of tools (add new ones here)
   ui/mermaid.ts           shared mermaid renderer (one queue, global config)
+  ui/workbench/           shared shell for source + live preview tools
+    index.ts              layout, resizable split, drop/open, status, prefs, share links
+    code-editor.ts        source textarea with line numbers
+    viewport.ts           pan and zoom
+    svg.ts                SVG sanitizing, sizing and PNG export
   tools/markdown/
     index.ts              the Markdown tool: open/save, status, menus
     editor.ts             Tiptap setup, bubble menu, change highlighting
@@ -78,14 +97,15 @@ src/
     engines.ts            Mermaid, PlantUML (server) and D2 (WebAssembly) renderers
     mermaid-theme.ts      the Claude look for Mermaid, including C4
     examples.ts           examples per language, C4 included
-    editor.ts             source textarea with line numbers
-    viewport.ts           pan and zoom
-    svg.ts                SVG sanitizing, sizing and PNG export
+  tools/svg/
+    index.ts              the SVG tool: preview, backdrops, optimize, export
+    svgdoc.ts             parsing, size, error lines, formatting, data URIs
+    examples.ts           example SVGs
 ```
 
 ### Adding a tool
 
-Add an entry to `src/tools/registry.ts` with an `id`, `name`, `description`, `icon` and a lazy `load()` that returns `{ mount(ctx) }`. The tool gets a content area plus two slots in the top bar, and is reachable at `#/<id>`.
+Add an entry to `src/tools/registry.ts` with an `id`, `name`, `description`, `icon` and a lazy `load()` that returns `{ mount(ctx) }`. The tool gets a content area plus two slots in the top bar, and is reachable at `#/<id>`. For a "source on the left, live preview on the right" tool, start from `createWorkbench()` in `src/ui/workbench`, as the Diagram and SVG tools do.
 
 ## Deploy
 
