@@ -9,7 +9,7 @@ import Highlight from '@tiptap/extension-highlight'
 import Image from '@tiptap/extension-image'
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import type { Node as PMNode } from '@tiptap/pm/model'
+import { Node as PMNode, Slice } from '@tiptap/pm/model'
 import { createLowlight, common } from 'lowlight'
 import { SlashCommand } from './slash'
 import { CodeBlock, MermaidEditing } from './mermaid'
@@ -115,6 +115,20 @@ function changedBlocks(before: PMNode, after: PMNode): Decoration[] {
   return decos.length > Math.max(6, after.childCount * 0.6) ? [] : decos
 }
 
+// ---------- Paste plain-text markdown as rich content ----------
+const MD_BLOCK = /^ {0,3}(?:#{1,6}\s|[-*+]\s+\S|\d{1,9}[.)]\s+\S|>|```|~~~|\|.*\||(?:[-*_]\s*){3,}$)/m
+const MD_INLINE = /(\*\*|__)\S[^\n]*?\1|\[[^\]\n]+\]\([^)\s]+[^)]*\)|!\[[^\]\n]*\]\(|`[^`\n]+`|~~\S[^\n]*?~~|\[\^[^\]\n]+\]/
+const RICH_HTML = /<(?:h[1-6]|p|ul|ol|li|table|blockquote|pre|code|strong|em|b|i|a|img|br)\b/i
+
+/** Plain text that reads as markdown, from a source without its own rich formatting. */
+export function shouldPasteAsMarkdown(text: string, html: string): boolean {
+  if (!text.trim()) return false
+  // Rich HTML (another editor, a web page) already carries structure — let ProseMirror use it.
+  // Code editors like VS Code put divs/spans of styled source on the clipboard; ignore that.
+  if (html && RICH_HTML.test(html)) return false
+  return MD_BLOCK.test(text) || MD_INLINE.test(text)
+}
+
 function buildBubble(getEditor: () => Editor) {
   const el = h('div', { class: 'bubble' })
   const marks: Array<{ name: string; icon: Parameters<typeof icon>[0]; title: string; run: (e: Editor) => void }> = [
@@ -217,6 +231,21 @@ export function createEditor(mount: HTMLElement, hooks: EditorHooks) {
     ],
     editorProps: {
       attributes: { class: 'prose', spellcheck: 'true' },
+      handlePaste: (view, event) => {
+        const data = event.clipboardData
+        if (!data || data.files.length) return false
+        if (view.state.selection.$from.parent.type.spec.code) return false
+        const text = data.getData('text/plain')
+        if (!shouldPasteAsMarkdown(text, data.getData('text/html'))) return false
+        let doc: PMNode
+        try {
+          doc = PMNode.fromJSON(view.state.schema, parse(text.replace(/\r\n?/g, '\n')))
+        } catch {
+          return false
+        }
+        view.dispatch(view.state.tr.replaceSelection(Slice.maxOpen(doc.content)).scrollIntoView().setMeta('paste', true))
+        return true
+      },
       handleDOMEvents: {
         click: (view, event) => {
           const a = (event.target as HTMLElement).closest('a')
